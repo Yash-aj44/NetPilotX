@@ -1,8 +1,5 @@
-from datetime import datetime
-
 from backend.app.services.incident_service import create_incident
 from backend.app.core.websocket_manager import manager
-
 
 alerts = []
 
@@ -40,7 +37,7 @@ async def create_alert(
     })
 
     if severity == "critical":
-        create_incident(
+        incident = create_incident(
             incident_id=f"INC-{device.upper()}",
             title="Device Connectivity Failure",
             severity="critical",
@@ -48,5 +45,10 @@ async def create_alert(
             root_cause=device,
             created_at=timestamp
         )
+
+        await manager.broadcast({
+            "type": "incident_created",
+            "incident": incident
+        })
 
     return alert
