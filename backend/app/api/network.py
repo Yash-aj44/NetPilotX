@@ -71,7 +71,7 @@ async def restore(device_id: str):
 
     if result["success"]:
         await manager.broadcast({
-            "type": "device_status_changed",
+            "type": "device_restored",
             "device": device_id,
             "status": "up",
             "timestamp": datetime.utcnow().isoformat()
