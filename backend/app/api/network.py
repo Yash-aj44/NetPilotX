@@ -10,6 +10,8 @@ from backend.network.failure_simulator import (
     restore_device,
     simulate_link_failure,
     restore_link,
+    simulate_endpoint_failure,
+    restore_endpoint,
 )
 
 from backend.network.network_state import network_state
@@ -83,6 +85,22 @@ async def simulate_link_failure_api(link_id: str):
     return result
 
 
+@router.post("/simulate-endpoint-failure")
+async def simulate_endpoint_failure_api(endpoint_id: str):
+
+    result = simulate_endpoint_failure(endpoint_id)
+
+    if result["success"]:
+        await manager.broadcast({
+            "type": "endpoint_status_changed",
+            "endpoint": endpoint_id,
+            "status": "down",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+
+    return result
+
+
 @router.post("/restore-link")
 async def restore_link_api(link_id: str):
 
@@ -98,6 +116,32 @@ async def restore_link_api(link_id: str):
 
         incident = resolve_incident(
             f"INC-{link_id.upper()}"
+        )
+
+        if incident:
+            await manager.broadcast({
+                "type": "incident_resolved",
+                "incident": incident
+            })
+
+    return result
+
+
+@router.post("/restore-endpoint")
+async def restore_endpoint_api(endpoint_id: str):
+
+    result = restore_endpoint(endpoint_id)
+
+    if result["success"]:
+        await manager.broadcast({
+            "type": "endpoint_restored",
+            "endpoint": endpoint_id,
+            "status": "up",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+
+        incident = resolve_incident(
+            f"INC-{endpoint_id.upper()}"
         )
 
         if incident:

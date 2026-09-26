@@ -103,3 +103,53 @@ def restore_link(link_id: str):
         "status": "up",
         "message": f"Link {link_id} restored"
     }
+
+
+def simulate_endpoint_failure(endpoint_id: str):
+    current_status = network_state["endpoints"].get(endpoint_id)
+
+    if current_status is None:
+        return {
+            "success": False,
+            "message": f"Endpoint {endpoint_id} not found"
+        }
+
+    if current_status == "down":
+        return {
+            "success": False,
+            "message": f"Endpoint {endpoint_id} is already down"
+        }
+
+    network_state["endpoints"][endpoint_id] = "down"
+
+    return {
+        "success": True,
+        "endpoint": endpoint_id,
+        "status": "down",
+        "message": f"Endpoint {endpoint_id} failure simulated"
+    }
+
+
+def restore_endpoint(endpoint_id: str):
+    current_status = network_state["endpoints"].get(endpoint_id)
+
+    if current_status is None:
+        return {
+            "success": False,
+            "message": f"Endpoint {endpoint_id} not found"
+        }
+
+    if current_status == "up":
+        return {
+            "success": False,
+            "message": f"Endpoint {endpoint_id} is already up"
+        }
+
+    network_state["endpoints"][endpoint_id] = "up"
+
+    return {
+        "success": True,
+        "endpoint": endpoint_id,
+        "status": "up",
+        "message": f"Endpoint {endpoint_id} restored"
+    }

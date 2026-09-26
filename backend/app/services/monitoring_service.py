@@ -55,4 +55,17 @@ async def get_monitoring_data():
                 timestamp=datetime.utcnow().isoformat()
             )
 
+    # Monitor endpoints
+    for endpoint, status in network_state["endpoints"].items():
+
+        if status == "down":
+            await create_alert(
+                alert_id=f"ALT-ENDPOINT-{endpoint.upper()}",
+                severity="critical",
+                title="Endpoint Down",
+                device=endpoint,
+                message=f"Endpoint {endpoint} is unreachable",
+                timestamp=datetime.utcnow().isoformat()
+            )
+
     return monitoring_data

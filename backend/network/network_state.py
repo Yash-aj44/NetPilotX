@@ -15,6 +15,14 @@ network_state = {
         "edge-09": "up",
     },
 
+    "endpoints": {
+        "endpoint-001": "up",
+        "endpoint-002": "up",
+        "endpoint-003": "up",
+        "endpoint-004": "up",
+        "endpoint-005": "up",
+    },
+
     "links": {
         "core-01-dist-01": "up",
         "core-01-dist-02": "up",
