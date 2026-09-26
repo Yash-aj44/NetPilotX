@@ -3,6 +3,8 @@ from backend.app.services.incident_service import (
     get_incidents,
     resolve_incident
 )
+from backend.app.core.websocket_manager import manager
+
 
 router = APIRouter(
     prefix="/api/incidents",
@@ -27,10 +29,16 @@ def get_incident(incident_id: str):
 
 
 @router.post("/{incident_id}/resolve")
-def resolve_incident_api(incident_id: str):
+async def resolve_incident_api(incident_id: str):
+
     incident = resolve_incident(incident_id)
 
     if incident is None:
         return {"error": "Incident not found"}
+
+    await manager.broadcast({
+        "type": "incident_resolved",
+        "incident": incident
+    })
 
     return incident
