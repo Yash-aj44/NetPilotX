@@ -32,10 +32,18 @@ def get_topology() -> NetworkTopology:
             source = f"{parts[0]}-{parts[1]}"
             target = f"{parts[2]}-{parts[3]}"
 
+            edge_status = status
+
+            if (
+                network_state["devices"].get(source) == "down"
+                or network_state["devices"].get(target) == "down"
+            ):
+                edge_status = "down"
+
             edges.append({
                 "source": source,
                 "target": target,
-                "status": status
+                "status": edge_status
             })
 
     return NetworkTopology(
