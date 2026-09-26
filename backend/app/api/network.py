@@ -3,11 +3,14 @@ from datetime import datetime
 
 from backend.app.schemas.network import NetworkTopology
 from backend.app.services.network_service import get_topology
+
 from backend.network.failure_simulator import (
     simulate_device_failure,
     restore_device,
 )
-from backend.network.network_state import get_device_status
+
+from backend.network.network_state import network_state
+
 from backend.app.core.websocket_manager import manager
 
 
@@ -24,22 +27,30 @@ def get_network_topology():
 
 @router.get("/state")
 def get_network_state():
-    edge_05_status = get_device_status("edge-05")
 
-    if edge_05_status == "down":
+    down_devices = [
+        device
+        for device, status in network_state["devices"].items()
+        if status == "down"
+    ]
+
+    if down_devices:
         return {
             "status": "degraded",
-            "message": "Edge-05 is down"
+            "message": "Network has down devices",
+            "down_devices": down_devices
         }
 
     return {
         "status": "healthy",
-        "message": "Network is operating normally"
+        "message": "Network is operating normally",
+        "down_devices": []
     }
 
 
 @router.post("/simulate-failure")
 async def simulate_failure(device_id: str):
+
     result = simulate_device_failure(device_id)
 
     if result["success"]:
@@ -55,6 +66,7 @@ async def simulate_failure(device_id: str):
 
 @router.post("/restore")
 async def restore(device_id: str):
+
     result = restore_device(device_id)
 
     if result["success"]:
