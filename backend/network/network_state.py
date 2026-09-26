@@ -16,11 +16,8 @@ network_state = {
     },
 
     "endpoints": {
-        "endpoint-001": "up",
-        "endpoint-002": "up",
-        "endpoint-003": "up",
-        "endpoint-004": "up",
-        "endpoint-005": "up",
+        f"endpoint-{i:03d}": "up"
+        for i in range(1, 201)
     },
 
     "links": {
