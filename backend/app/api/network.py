@@ -3,6 +3,7 @@ from datetime import datetime
 
 from backend.app.schemas.network import NetworkTopology
 from backend.app.services.network_service import get_topology
+from backend.app.services.incident_service import resolve_incident
 
 from backend.network.failure_simulator import (
     simulate_device_failure,
@@ -70,11 +71,22 @@ async def restore(device_id: str):
     result = restore_device(device_id)
 
     if result["success"]:
+
         await manager.broadcast({
             "type": "device_restored",
             "device": device_id,
             "status": "up",
             "timestamp": datetime.utcnow().isoformat()
         })
+
+        incident = resolve_incident(
+            f"INC-{device_id.upper()}"
+        )
+
+        if incident:
+            await manager.broadcast({
+                "type": "incident_resolved",
+                "incident": incident
+            })
 
     return result
