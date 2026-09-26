@@ -78,3 +78,28 @@ def simulate_link_failure(link_id: str):
         "status": "down",
         "message": f"Link {link_id} failure simulated"
     }
+
+
+def restore_link(link_id: str):
+    current_status = network_state["links"].get(link_id)
+
+    if current_status is None:
+        return {
+            "success": False,
+            "message": f"Link {link_id} not found"
+        }
+
+    if current_status == "up":
+        return {
+            "success": False,
+            "message": f"Link {link_id} is already up"
+        }
+
+    network_state["links"][link_id] = "up"
+
+    return {
+        "success": True,
+        "link": link_id,
+        "status": "up",
+        "message": f"Link {link_id} restored"
+    }
