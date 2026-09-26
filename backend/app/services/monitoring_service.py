@@ -3,7 +3,7 @@ from backend.app.services.alert_service import create_alert
 from datetime import datetime
 
 
-def get_monitoring_data():
+async def get_monitoring_data():
     monitoring_data = []
 
     for device, status in network_state["devices"].items():
@@ -20,7 +20,7 @@ def get_monitoring_data():
                 }
             )
 
-            create_alert(
+            await create_alert(
                 alert_id=f"ALT-{device.upper()}",
                 severity="critical",
                 title="Device Down",

@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from datetime import datetime
 
 from backend.app.schemas.network import NetworkTopology
 from backend.app.services.network_service import get_topology
@@ -7,6 +8,7 @@ from backend.network.failure_simulator import (
     restore_device,
 )
 from backend.network.network_state import get_device_status
+from backend.app.core.websocket_manager import manager
 
 
 router = APIRouter(
@@ -37,10 +39,30 @@ def get_network_state():
 
 
 @router.post("/simulate-failure")
-def simulate_failure(device_id: str):
-    return simulate_device_failure(device_id)
+async def simulate_failure(device_id: str):
+    result = simulate_device_failure(device_id)
+
+    if result["success"]:
+        await manager.broadcast({
+            "type": "device_status_changed",
+            "device": device_id,
+            "status": "down",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+
+    return result
 
 
 @router.post("/restore")
-def restore(device_id: str):
-    return restore_device(device_id)
+async def restore(device_id: str):
+    result = restore_device(device_id)
+
+    if result["success"]:
+        await manager.broadcast({
+            "type": "device_status_changed",
+            "device": device_id,
+            "status": "up",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+
+    return result

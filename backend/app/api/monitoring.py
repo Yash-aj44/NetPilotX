@@ -1,5 +1,7 @@
 from fastapi import APIRouter
+
 from backend.app.services.monitoring_service import get_monitoring_data
+
 
 router = APIRouter(
     prefix="/api/monitoring",
@@ -8,5 +10,5 @@ router = APIRouter(
 
 
 @router.get("")
-def get_monitoring():
-    return get_monitoring_data()
+async def get_monitoring():
+    return await get_monitoring_data()

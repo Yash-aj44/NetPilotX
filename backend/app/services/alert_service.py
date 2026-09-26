@@ -1,4 +1,7 @@
+from datetime import datetime
+
 from backend.app.services.incident_service import create_incident
+from backend.app.core.websocket_manager import manager
 
 
 alerts = []
@@ -8,7 +11,7 @@ def get_alerts():
     return alerts
 
 
-def create_alert(
+async def create_alert(
     alert_id: str,
     severity: str,
     title: str,
@@ -16,7 +19,6 @@ def create_alert(
     message: str,
     timestamp: str
 ):
-    # Don't create the same alert repeatedly
     for alert in alerts:
         if alert["id"] == alert_id:
             return alert
@@ -32,7 +34,11 @@ def create_alert(
 
     alerts.append(alert)
 
-    # Critical device-down alert creates an incident
+    await manager.broadcast({
+        "type": "alert_created",
+        "alert": alert
+    })
+
     if severity == "critical":
         create_incident(
             incident_id=f"INC-{device.upper()}",

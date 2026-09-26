@@ -9,9 +9,9 @@ from backend.app.services.alert_service import get_alerts
 from backend.app.services.incident_service import get_incidents
 
 
-def ask_ai(message: str) -> str:
+async def ask_ai(message: str) -> str:
     topology = get_topology()
-    monitoring = get_monitoring_data()
+    monitoring = await get_monitoring_data()
     alerts = get_alerts()
     incidents = get_incidents()
 
