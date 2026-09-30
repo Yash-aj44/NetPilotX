@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Network,
   Activity,
+  Waypoints,
   AlertTriangle,
   Bell,
   Bot,
@@ -39,6 +40,11 @@ export default function Sidebar({ onOpenCopilot, copilotOpen }: SidebarProps) {
       name: "Monitoring",
       path: "/monitoring",
       icon: Activity,
+    },
+    {
+      name: "Traffic",
+      path: "/traffic",
+      icon: Waypoints,
     },
     {
       name: "Incidents",

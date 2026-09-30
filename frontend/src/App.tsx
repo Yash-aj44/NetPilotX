@@ -5,6 +5,7 @@ import Network from "./pages/Network";
 import Monitoring from "./pages/Monitoring";
 import Incidents from "./pages/Incidents";
 import Alerts from "./pages/Alerts";
+import Traffic from "./pages/Traffic";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -33,6 +34,7 @@ function App() {
                   <Route path="/monitoring" element={<Monitoring />} />
                   <Route path="/incidents" element={<Incidents />} />
                   <Route path="/alerts" element={<Alerts />} />
+                  <Route path="/traffic" element={<Traffic />} />
                 </Route>
               </Route>
 

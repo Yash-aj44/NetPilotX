@@ -4,6 +4,7 @@ import type { RenderLink, RenderNode } from "./topologyLayout";
 export interface TopologyRenderCallbacks {
   onNodeClick: (node: RenderNode) => void;
   onNodeDoubleClick: (node: RenderNode) => void;
+  onNodeHover?: (node: RenderNode | null, mousePos?: { x: number; y: number }) => void;
 }
 
 export function renderD3Topology(
@@ -54,9 +55,9 @@ export function renderD3Topology(
     .merge(linkEnter)
     .attr("id", (d) => `link-path-${d.id}`)
     .attr("d", linkPathGenerator)
-    .attr("stroke", (d) => (d.status === "down" ? "#FF3B3B" : "#00C8FF"))
-    .attr("stroke-width", (d) => (d.id.includes("ep-") ? 1.5 : 2.5))
-    .attr("stroke-opacity", (d) => (d.status === "down" ? 0.85 : 0.4))
+    .attr("stroke", (d) => (d.status === "down" ? "#C85C52" : "#292929"))
+    .attr("stroke-width", (d) => (d.id.includes("ep-") ? 1.2 : 2))
+    .attr("stroke-opacity", (d) => (d.status === "down" ? 0.9 : 0.6))
     .attr("stroke-dasharray", (d) => (d.status === "down" ? "6,6" : "none"));
 
   // -----------------------------------------------------------------
@@ -88,7 +89,7 @@ export function renderD3Topology(
       .attr("height", d.isEndpoint ? 32 : d.type === "core" ? 56 : 44)
       .attr("rx", d.isEndpoint ? 6 : 4)
       .attr("fill", "none")
-      .attr("stroke", d.status === "down" ? "#FF3B3B" : "#00C8FF")
+      .attr("stroke", d.status === "down" ? "#C85C52" : "#E9A52B")
       .attr("stroke-width", 1.5)
       .attr("opacity", 0);
 
@@ -101,10 +102,10 @@ export function renderD3Topology(
         .attr("y", -14)
         .attr("width", 28)
         .attr("height", 28)
-        .attr("rx", 4)
-        .attr("fill", "#081722")
-        .attr("stroke", d.status === "down" ? "#FF3B3B" : "#173344")
-        .attr("stroke-width", 1.5);
+        .attr("rx", 3)
+        .attr("fill", "#101010")
+        .attr("stroke", d.status === "down" ? "#C85C52" : "#292929")
+        .attr("stroke-width", 1.2);
     } else if (d.type === "core") {
       // Core Chassis Module (Large Architectural Box with top bar)
       group
@@ -114,10 +115,10 @@ export function renderD3Topology(
         .attr("y", -24)
         .attr("width", 64)
         .attr("height", 48)
-        .attr("rx", 4)
-        .attr("fill", "#081722")
-        .attr("stroke", d.status === "down" ? "#FF3B3B" : "#173344")
-        .attr("stroke-width", 2);
+        .attr("rx", 3)
+        .attr("fill", "#101010")
+        .attr("stroke", d.status === "down" ? "#C85C52" : "#292929")
+        .attr("stroke-width", 1.5);
 
       // Top Accent Line
       group
@@ -126,7 +127,7 @@ export function renderD3Topology(
         .attr("y1", -16)
         .attr("x2", 32)
         .attr("y2", -16)
-        .attr("stroke", d.status === "down" ? "#FF3B3B" : "#00C8FF")
+        .attr("stroke", d.status === "down" ? "#C85C52" : "#E9A52B")
         .attr("stroke-width", 1.5);
     } else {
       // Distribution & Edge Chassis Modules
@@ -137,10 +138,10 @@ export function renderD3Topology(
         .attr("y", -18)
         .attr("width", 50)
         .attr("height", 36)
-        .attr("rx", 4)
-        .attr("fill", "#081722")
-        .attr("stroke", d.status === "down" ? "#FF3B3B" : "#173344")
-        .attr("stroke-width", 1.5);
+        .attr("rx", 3)
+        .attr("fill", "#101010")
+        .attr("stroke", d.status === "down" ? "#C85C52" : "#292929")
+        .attr("stroke-width", 1.2);
     }
 
     // Technical Code Symbol Label
@@ -151,9 +152,9 @@ export function renderD3Topology(
       .attr("dominant-baseline", "central")
       .attr("y", d.type === "core" ? 4 : 0)
       .attr("font-size", d.isEndpoint ? "9px" : "11px")
-      .attr("font-family", "monospace")
+      .attr("font-family", "'JetBrains Mono', monospace")
       .attr("font-weight", "700")
-      .attr("fill", "#F4F8FB")
+      .attr("fill", "#F2F0EA")
       .text(
         d.isEndpoint
           ? d.endpointType?.substring(0, 3).toUpperCase() || "SYS"
@@ -172,8 +173,8 @@ export function renderD3Topology(
       .attr("text-anchor", "middle")
       .attr("font-size", "10px")
       .attr("font-weight", "600")
-      .attr("font-family", "monospace")
-      .attr("fill", "#8DA2B5")
+      .attr("font-family", "'JetBrains Mono', monospace")
+      .attr("fill", "#A6A39C")
       .text(d.name);
 
     // Status Indicator Dot
@@ -183,7 +184,7 @@ export function renderD3Topology(
       .attr("cx", d.isEndpoint ? 8 : d.type === "core" ? 20 : 16)
       .attr("cy", d.isEndpoint ? -8 : d.type === "core" ? -14 : -10)
       .attr("r", 3)
-      .attr("fill", d.status === "down" ? "#FF3B3B" : "#00E676");
+      .attr("fill", d.status === "down" ? "#C85C52" : "#8FAF8F");
   });
 
   const mergedNodes = nodeSelection.merge(nodeEnter);
@@ -197,6 +198,16 @@ export function renderD3Topology(
     .on("dblclick", (event, d) => {
       event.stopPropagation();
       callbacks.onNodeDoubleClick(d);
+    })
+    .on("mouseover", (event, d) => {
+      if (callbacks.onNodeHover) {
+        callbacks.onNodeHover(d, { x: event.clientX, y: event.clientY });
+      }
+    })
+    .on("mouseout", () => {
+      if (callbacks.onNodeHover) {
+        callbacks.onNodeHover(null);
+      }
     });
 
   // Highlight Selected & Expanded State
@@ -207,16 +218,16 @@ export function renderD3Topology(
 
     group
       .select(".node-base")
-      .attr("stroke", d.status === "down" ? "#FF3B3B" : isSelected || isExpanded ? "#00C8FF" : "#173344")
-      .attr("stroke-width", isSelected || isExpanded ? 2.5 : 1.5);
+      .attr("stroke", d.status === "down" ? "#C85C52" : isSelected || isExpanded ? "#E9A52B" : "#292929")
+      .attr("stroke-width", isSelected || isExpanded ? 2 : 1.2);
 
     group
       .select(".node-glow-ring")
-      .attr("opacity", isSelected || isExpanded ? 0.7 : 0)
-      .attr("stroke", d.status === "down" ? "#FF3B3B" : "#00C8FF");
+      .attr("opacity", isSelected || isExpanded ? 0.8 : 0)
+      .attr("stroke", d.status === "down" ? "#C85C52" : "#E9A52B");
 
     group
       .select(".node-label")
-      .attr("fill", isSelected ? "#F4F8FB" : "#8DA2B5");
+      .attr("fill", isSelected ? "#F2F0EA" : "#A6A39C");
   });
 }

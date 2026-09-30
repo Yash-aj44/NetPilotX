@@ -13,8 +13,8 @@ export function animateNodeStateChange(nodeId: string, status: string) {
     const glowCircle = element.querySelector(".node-glow-ring");
     if (glowCircle) {
       gsap.to(glowCircle, {
-        stroke: "#FF3B3B",
-        strokeWidth: 4,
+        stroke: "#C85C52",
+        strokeWidth: 3,
         opacity: 0.9,
         duration: 0.3,
       });
@@ -31,7 +31,7 @@ export function animateNodeStateChange(nodeId: string, status: string) {
     if (glowCircle) {
       gsap.killTweensOf(glowCircle);
       gsap.timeline()
-        .to(glowCircle, { stroke: "#00E676", strokeWidth: 5, opacity: 1, duration: 0.3 })
+        .to(glowCircle, { stroke: "#8FAF8F", strokeWidth: 4, opacity: 1, duration: 0.3 })
         .to(glowCircle, { strokeWidth: 2, opacity: 0.4, duration: 0.4 });
     }
   }
@@ -45,7 +45,7 @@ export function animateCascadingFailure(failedNodeId: string, affectedLinkIds: s
     tl.to(
       `#link-path-${linkId}`,
       {
-        stroke: "#FF3B3B",
+        stroke: "#C85C52",
         strokeDasharray: "6,6",
         duration: 0.25,
         ease: "power2.inOut",
@@ -62,7 +62,7 @@ export function animateRecoveryCascade(recoveredNodeId: string, restoredLinkIds:
     tl.to(
       `#link-path-${linkId}`,
       {
-        stroke: "#00C8FF",
+        stroke: "#292929",
         strokeDasharray: "none",
         duration: 0.3,
       },
@@ -174,15 +174,14 @@ export function createPacketFlowParticles(
       // Create 2 packet particles per link
       for (let i = 0; i < 2; i++) {
         const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        circle.setAttribute("r", "3");
-        circle.setAttribute("fill", "#00C8FF");
-        circle.setAttribute("filter", "drop-shadow(0 0 4px #00C8FF)");
+        circle.setAttribute("r", "2.5");
+        circle.setAttribute("fill", "#E9A52B");
         particleGroup.appendChild(circle);
 
         const obj = { progress: i * 0.5 };
         const tween = gsap.to(obj, {
           progress: "+=1",
-          duration: 2.2 + Math.random() * 0.8,
+          duration: 2.4 + Math.random() * 0.8,
           repeat: -1,
           ease: "none",
           onUpdate: () => {
@@ -191,7 +190,7 @@ export function createPacketFlowParticles(
             circle.setAttribute("cx", String(pt.x));
             circle.setAttribute("cy", String(pt.y));
             const fade = Math.sin(normProg * Math.PI);
-            circle.setAttribute("opacity", String(fade * 0.85));
+            circle.setAttribute("opacity", String(fade * 0.7));
           },
         });
         tweens.push(tween);

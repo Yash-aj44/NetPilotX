@@ -5,6 +5,7 @@ import { Network, ArrowRight, Lock, Mail, Activity, ShieldCheck, Cpu } from "luc
 import { useAuth } from "../context/AuthContext";
 import AuthBackground from "../components/auth/AuthBackground";
 import ProductIntro from "../components/auth/ProductIntro";
+import VariableProximity from "../components/ui/VariableProximity";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -96,7 +97,7 @@ export default function Login() {
                   <span className="pill-dot pulse" />
                   <span>AUTONOMOUS NOC PLATFORM</span>
                 </div>
-                <h1 className="editorial-title">NETPILOT X</h1>
+                <VariableProximity label="NETPILOT X" className="editorial-title" radius={140} />
                 <p className="editorial-subtitle">
                   AI-POWERED NETWORK OPERATIONS & SIMULATION ENGINE
                 </p>

@@ -27,6 +27,7 @@ export default function Header({ onToggleCopilot }: HeaderProps) {
     "/dashboard": "Dashboard",
     "/network": "Network Topology",
     "/monitoring": "Monitoring & Telemetry",
+    "/traffic": "Traffic Intelligence",
     "/incidents": "Incident Management",
     "/alerts": "Alert Feed",
   };

@@ -5,6 +5,7 @@ import { Network, ArrowRight, Lock, Mail, User as UserIcon, Activity, ShieldChec
 import { useAuth } from "../context/AuthContext";
 import AuthBackground from "../components/auth/AuthBackground";
 import ProductIntro from "../components/auth/ProductIntro";
+import VariableProximity from "../components/ui/VariableProximity";
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -100,7 +101,7 @@ export default function Signup() {
                   <span className="pill-dot pulse" />
                   <span>REGISTER OPERATOR ACCOUNT</span>
                 </div>
-                <h1 className="editorial-title">NETPILOT X</h1>
+                <VariableProximity label="NETPILOT X" className="editorial-title" radius={140} />
                 <p className="editorial-subtitle">
                   AI-POWERED NETWORK OPERATIONS & SIMULATION ENGINE
                 </p>

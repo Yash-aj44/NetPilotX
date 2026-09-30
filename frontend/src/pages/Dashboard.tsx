@@ -12,6 +12,7 @@ import {
 import { useNetwork } from "../context/NetworkContext";
 import AnimatedNumber from "../components/ui/AnimatedNumber";
 import StatusBadge from "../components/ui/StatusBadge";
+import TextReveal from "../components/ui/TextReveal";
 import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
@@ -27,7 +28,7 @@ export default function Dashboard() {
   const nodes = topology?.nodes ?? [];
   const isHealthy = networkHealth >= 90;
 
-  const cubicEase = [0.22, 1, 0.36, 1] as const;
+  const cubicEase = [0.16, 1, 0.3, 1] as const;
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -40,22 +41,12 @@ export default function Dashboard() {
     },
   };
 
-  const fastItemVariants = {
-    hidden: { opacity: 0, y: 12 },
+  const itemVariants = {
+    hidden: { opacity: 0, y: 16 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.28, ease: cubicEase },
-    },
-  };
-
-  const slowItemVariants = {
-    hidden: { opacity: 0, y: 24, scale: 0.98 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: { duration: 0.52, ease: cubicEase },
+      transition: { duration: 0.4, ease: cubicEase },
     },
   };
 
@@ -67,10 +58,10 @@ export default function Dashboard() {
       animate="visible"
     >
       {/* 1. Page Heading Header */}
-      <motion.div className="page-heading" variants={fastItemVariants}>
+      <motion.div className="page-heading" variants={itemVariants}>
         <div>
           <p className="page-eyebrow">COMMAND CENTER</p>
-          <h1>Network Operations Overview</h1>
+          <TextReveal text="Network Operations Overview" as="h1" />
           <p className="page-description">
             Real-time telemetry and infrastructure health across NetPilot X.
           </p>
@@ -84,25 +75,25 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      {/* 2. Top Operational KPI Strip */}
+      {/* 2. Editorial Metric Hierarchy (Dominant Number + Supporting KPIs) */}
       <motion.div className="kpi-grid" variants={containerVariants}>
-        <motion.div className="kpi-card" variants={fastItemVariants}>
+        <motion.div className="kpi-card highlight-card" variants={itemVariants}>
           <div className="kpi-header">
             <span className="kpi-title">NETWORK HEALTH</span>
-            <Network size={18} className="kpi-icon text-cyan-400" />
+            <Network size={16} style={{ color: "var(--accent)" }} />
           </div>
           <div className="kpi-body">
-            <h2 className="kpi-value">
+            <h2 className="kpi-value text-amber-500">
               <AnimatedNumber value={networkHealth} suffix="%" />
             </h2>
             <p className="kpi-subtext">Overall operational capacity</p>
           </div>
         </motion.div>
 
-        <motion.div className="kpi-card" variants={fastItemVariants}>
+        <motion.div className="kpi-card" variants={itemVariants}>
           <div className="kpi-header">
             <span className="kpi-title">ACTIVE SYSTEMS</span>
-            <CheckCircle size={18} className="kpi-icon text-emerald-400" />
+            <CheckCircle size={16} style={{ color: "var(--healthy)" }} />
           </div>
           <div className="kpi-body">
             <h2 className="kpi-value">
@@ -113,10 +104,10 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        <motion.div className="kpi-card" variants={fastItemVariants}>
+        <motion.div className="kpi-card" variants={itemVariants}>
           <div className="kpi-header">
             <span className="kpi-title">SYSTEMS OFFLINE</span>
-            <Server size={18} className="kpi-icon text-amber-400" />
+            <Server size={16} style={{ color: offlineSystems > 0 ? "var(--critical)" : "var(--text-muted)" }} />
           </div>
           <div className="kpi-body">
             <h2 className="kpi-value">
@@ -126,10 +117,10 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        <motion.div className="kpi-card" variants={fastItemVariants}>
+        <motion.div className="kpi-card" variants={itemVariants}>
           <div className="kpi-header">
             <span className="kpi-title">OPEN INCIDENTS</span>
-            <AlertOctagon size={18} className="kpi-icon text-rose-400" />
+            <AlertOctagon size={16} style={{ color: activeIncidents.length > 0 ? "var(--critical)" : "var(--text-muted)" }} />
           </div>
           <div className="kpi-body">
             <h2 className="kpi-value">
@@ -143,7 +134,7 @@ export default function Dashboard() {
       {/* 3. Middle Grid: Network Capacity & AI Assistant Preview */}
       <motion.div className="dashboard-middle-grid" variants={containerVariants}>
         {/* Network Capacity Radial Overview */}
-        <motion.section className="dashboard-panel health-ring-panel" variants={slowItemVariants}>
+        <motion.section className="dashboard-panel health-ring-panel" variants={itemVariants}>
           <div className="panel-header">
             <div>
               <p className="panel-eyebrow">INFRASTRUCTURE CAPACITY</p>
@@ -160,7 +151,7 @@ export default function Dashboard() {
                   cx="80"
                   cy="80"
                   r="65"
-                  strokeWidth="10"
+                  strokeWidth="8"
                   fill="none"
                 />
                 <circle
@@ -168,16 +159,18 @@ export default function Dashboard() {
                   cx="80"
                   cy="80"
                   r="65"
-                  strokeWidth="10"
+                  strokeWidth="8"
                   fill="none"
                   strokeDasharray="408"
                   strokeDashoffset={408 - (408 * networkHealth) / 100}
-                  stroke={isHealthy ? "#00C8FF" : "#FF3B3B"}
+                  stroke={isHealthy ? "var(--accent)" : "var(--critical)"}
                   strokeLinecap="round"
                 />
               </svg>
               <div className="radial-content">
-                <span className="radial-number">{networkHealth}%</span>
+                <span className="radial-number">
+                  <AnimatedNumber value={networkHealth} suffix="%" />
+                </span>
                 <span className="radial-label">CAPACITY</span>
               </div>
             </div>
@@ -211,10 +204,10 @@ export default function Dashboard() {
         </motion.section>
 
         {/* AI Copilot Preview */}
-        <motion.section className="dashboard-panel copilot-preview-panel" variants={slowItemVariants}>
+        <motion.section className="dashboard-panel copilot-preview-panel" variants={itemVariants}>
           <div className="panel-header">
             <div className="flex items-center gap-2">
-              <Bot size={18} className="text-cyan-400" />
+              <Bot size={16} style={{ color: "var(--accent)" }} />
               <div>
                 <p className="panel-eyebrow">AUTONOMOUS ASSISTANT</p>
                 <h2>AI NOC Copilot</h2>
@@ -228,7 +221,7 @@ export default function Dashboard() {
           <div className="copilot-preview-body">
             {activeIncidents.length > 0 ? (
               <div className="copilot-alert-box">
-                <AlertOctagon size={22} className="text-rose-400 shrink-0" />
+                <AlertOctagon size={20} style={{ color: "var(--critical)" }} className="shrink-0" />
                 <div>
                   <strong>Incident Detected: {activeIncidents[0].deviceName}</strong>
                   <p>
@@ -239,11 +232,11 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="copilot-healthy-box">
-                <ShieldCheck size={22} className="text-emerald-400 shrink-0" />
+                <ShieldCheck size={20} style={{ color: "var(--healthy)" }} className="shrink-0" />
                 <div>
                   <strong>All Infrastructure Operational</strong>
                   <p>
-                    Zero active failures detected across the 200 monitored endpoint systems.
+                    Zero active failures detected across the {totalSystems} monitored endpoint systems.
                   </p>
                 </div>
               </div>
@@ -262,7 +255,7 @@ export default function Dashboard() {
       </motion.div>
 
       {/* 4. Infrastructure Switch Status Grid */}
-      <motion.section className="dashboard-panel" variants={slowItemVariants}>
+      <motion.section className="dashboard-panel" variants={itemVariants}>
         <div className="panel-header">
           <div>
             <p className="panel-eyebrow">INFRASTRUCTURE SWITCHES</p>
@@ -283,8 +276,8 @@ export default function Dashboard() {
               key={node.id}
               className={`device-card-item ${node.status === "down" ? "critical" : ""}`}
               onClick={() => navigate(`/network?device=${node.id}`)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
             >
               <div className="device-card-header">
                 <StatusBadge status={node.status} />

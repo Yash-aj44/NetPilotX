@@ -7,6 +7,7 @@ import SimulationControls from "../components/network/SimulationControls";
 import DeviceDrawer from "../components/network/DeviceDrawer";
 import { useNetwork } from "../context/NetworkContext";
 import StatusBadge from "../components/ui/StatusBadge";
+import TextReveal from "../components/ui/TextReveal";
 import type { NetworkNode } from "../types/network";
 
 export default function Network() {
@@ -18,6 +19,7 @@ export default function Network() {
     networkState,
     failureAlert,
     loading,
+    error,
     refreshNetwork,
     failDevice,
     recoverNetwork,
@@ -39,11 +41,33 @@ export default function Network() {
     ? networkState?.devices.find((d) => d.id === selectedNode.id) || null
     : null;
 
-  if (loading || !topology || !networkState) {
+  if (loading && !topology) {
     return (
       <div className="page-loading-center">
-        <Activity size={28} className="animate-spin text-cyan-400" />
+        <Activity size={24} style={{ color: "var(--accent)" }} className="animate-spin" />
         <span>Loading NetPilot X Topology Engine...</span>
+      </div>
+    );
+  }
+
+  if (error || !topology || !networkState) {
+    return (
+      <div className="page-loading-center text-center p-6">
+        <ShieldAlert size={36} style={{ color: "var(--critical)" }} className="mb-3 mx-auto" />
+        <h3 className="text-lg font-semibold text-slate-200 mb-1">
+          Topology Connection Issue
+        </h3>
+        <p className="text-sm text-slate-400 max-w-md mx-auto mb-4">
+          {error || "Unable to retrieve topology state from NetPilot X backend."}
+        </p>
+        <button
+          type="button"
+          className="recover-action-btn px-4 py-2"
+          onClick={refreshNetwork}
+        >
+          <RefreshCw size={14} className="inline mr-2" />
+          Retry Connection
+        </button>
       </div>
     );
   }
@@ -56,7 +80,7 @@ export default function Network() {
       : "Critical";
 
   const onlineSystems = networkState.totalSystems - networkState.offlineSystems;
-  const cubicEase = [0.22, 1, 0.36, 1] as const;
+  const cubicEase = [0.16, 1, 0.3, 1] as const;
 
   return (
     <motion.div
@@ -70,25 +94,25 @@ export default function Network() {
       <div className="network-top-action-bar">
         <div className="bar-title-group">
           <p className="page-eyebrow">LIVE TOPOLOGY ENGINE</p>
-          <h1>Enterprise Core Architecture</h1>
+          <TextReveal text="Enterprise Core Architecture" as="h1" />
         </div>
 
         {/* Quick Stat Chips & Legend */}
         <div className="network-stat-chips-row">
           <div className="chip-item">
-            <Server size={14} className="text-cyan-400" />
+            <Server size={14} style={{ color: "var(--accent)" }} />
             <span>Switches:</span>
             <strong>{topology.nodes.length}</strong>
           </div>
 
           <div className="chip-item">
-            <Activity size={14} className="text-emerald-400" />
+            <Activity size={14} style={{ color: "var(--healthy)" }} />
             <span>Online:</span>
             <strong>{onlineSystems} / {networkState.totalSystems}</strong>
           </div>
 
           <div className="chip-item">
-            <ShieldAlert size={14} className={networkState.offlineSystems > 0 ? "text-rose-400" : "text-slate-400"} />
+            <ShieldAlert size={14} style={{ color: networkState.offlineSystems > 0 ? "var(--critical)" : "var(--text-muted)" }} />
             <span>Offline:</span>
             <strong>{networkState.offlineSystems}</strong>
           </div>
@@ -150,7 +174,7 @@ export default function Network() {
       {failureAlert && !showIncidentDrawer && (
         <div className="failure-alert-toast">
           <div className="failure-alert-icon">
-            <AlertTriangle size={20} className="text-rose-400" />
+            <AlertTriangle size={20} style={{ color: "var(--critical)" }} />
           </div>
           <div className="failure-alert-content">
             <span className="alert-severity-tag">CRITICAL FAILURE ALERT</span>
@@ -216,7 +240,7 @@ export default function Network() {
                 <p className="panel-eyebrow">NETWORK DEPENDENCY PATH</p>
                 <div className="dependency-flow-path">
                   <span className="dep-node healthy">DIST-02</span>
-                  <span className="dep-arrow text-rose-400">⚡ LINK DOWN</span>
+                  <span className="dep-arrow" style={{ color: "var(--critical)" }}>⚡ LINK DOWN</span>
                   <span className="dep-node failed">{failureAlert.deviceName}</span>
                   <span className="dep-arrow">→</span>
                   <span className="dep-node affected">

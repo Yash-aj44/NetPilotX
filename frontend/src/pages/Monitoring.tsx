@@ -4,11 +4,12 @@ import { useNetwork } from "../context/NetworkContext";
 import MonitoringChart from "../components/monitoring/MonitoringChart";
 import AnimatedNumber from "../components/ui/AnimatedNumber";
 import StatusBadge from "../components/ui/StatusBadge";
+import TextReveal from "../components/ui/TextReveal";
 
 export default function Monitoring() {
-  const { networkState, topology, loading } = useNetwork();
+  const { networkState, topology, loading, error, monitoring, refreshNetwork } = useNetwork();
 
-  if (loading || !networkState || !topology) {
+  if (loading && !networkState) {
     return (
       <div className="page-loading-center">
         <span>Loading Telemetry Feed...</span>
@@ -16,7 +17,43 @@ export default function Monitoring() {
     );
   }
 
-  const devices = networkState.devices;
+  if (error || !networkState || !topology) {
+    return (
+      <div className="page-loading-center text-center p-6">
+        <h3 className="text-lg font-semibold text-slate-200 mb-1">
+          Telemetry Service Interrupted
+        </h3>
+        <p className="text-sm text-slate-400 max-w-md mx-auto mb-4">
+          {error || "Unable to retrieve real-time monitoring data from backend."}
+        </p>
+        <button
+          type="button"
+          className="recover-action-btn px-4 py-2"
+          onClick={refreshNetwork}
+        >
+          Retry Connection
+        </button>
+      </div>
+    );
+  }
+
+  const devices = networkState.devices.map((dev) => {
+    const monData = monitoring.find(
+      (m) => m.device.toLowerCase() === dev.id.toLowerCase()
+    );
+    if (monData) {
+      return {
+        ...dev,
+        status: monData.status,
+        cpu: monData.cpu,
+        memory: monData.memory,
+        latency: monData.latency,
+        packetLoss: monData.packetLoss,
+      };
+    }
+    return dev;
+  });
+
   const total = devices.length;
 
   const onlineNodes = topology.nodes.filter((n) => n.status === "up").length;
@@ -43,7 +80,7 @@ export default function Monitoring() {
     { time: "10:25", cpu: avgCpu, memory: avgMemory, latency: avgLatency },
   ];
 
-  const cubicEase = [0.22, 1, 0.36, 1] as const;
+  const cubicEase = [0.16, 1, 0.3, 1] as const;
 
   return (
     <motion.div
@@ -57,7 +94,7 @@ export default function Monitoring() {
       <div className="page-heading">
         <div>
           <p className="page-eyebrow">TELEMETRY & PERFORMANCE</p>
-          <h1>Real-Time Network Monitoring</h1>
+          <TextReveal text="Real-Time Network Monitoring" as="h1" />
           <p className="page-description">
             Live telemetry stream across core switches and endpoint subnets.
           </p>
@@ -73,7 +110,7 @@ export default function Monitoring() {
         <motion.div className="kpi-card" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
           <div className="kpi-header">
             <span className="kpi-title">AVERAGE CPU</span>
-            <Cpu size={20} className="kpi-icon text-cyan-400" />
+            <Cpu size={18} style={{ color: "var(--accent)" }} />
           </div>
           <div className="kpi-body">
             <h2 className="kpi-value">
@@ -86,7 +123,7 @@ export default function Monitoring() {
         <motion.div className="kpi-card" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
           <div className="kpi-header">
             <span className="kpi-title">AVERAGE MEMORY</span>
-            <MemoryStick size={20} className="kpi-icon text-emerald-400" />
+            <MemoryStick size={18} style={{ color: "var(--healthy)" }} />
           </div>
           <div className="kpi-body">
             <h2 className="kpi-value">
@@ -99,7 +136,7 @@ export default function Monitoring() {
         <motion.div className="kpi-card" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <div className="kpi-header">
             <span className="kpi-title">AVERAGE LATENCY</span>
-            <Gauge size={20} className="kpi-icon text-amber-400" />
+            <Gauge size={18} style={{ color: "var(--degraded)" }} />
           </div>
           <div className="kpi-body">
             <h2 className="kpi-value">
@@ -112,7 +149,7 @@ export default function Monitoring() {
         <motion.div className="kpi-card" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
           <div className="kpi-header">
             <span className="kpi-title">PACKET LOSS RATE</span>
-            <Radio size={20} className="kpi-icon text-rose-400" />
+            <Radio size={18} style={{ color: parseFloat(avgLoss) > 0 ? "var(--critical)" : "var(--text-muted)" }} />
           </div>
           <div className="kpi-body">
             <h2 className="kpi-value">{avgLoss}%</h2>
@@ -140,9 +177,9 @@ export default function Monitoring() {
             <h2>Switch Status & Resource Utilization</h2>
           </div>
           <div className="flex gap-4 text-xs font-mono">
-            <span className="text-emerald-400">{onlineNodes} Operational</span>
-            <span className="text-amber-400">{degradedNodes} Degraded</span>
-            <span className="text-rose-400">{offlineNodes} Down</span>
+            <span style={{ color: "var(--healthy)" }}>{onlineNodes} Operational</span>
+            <span style={{ color: "var(--degraded)" }}>{degradedNodes} Degraded</span>
+            <span style={{ color: "var(--critical)" }}>{offlineNodes} Down</span>
           </div>
         </div>
 

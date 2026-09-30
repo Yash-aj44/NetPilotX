@@ -20,7 +20,7 @@ export default function CopilotPanel({
   selectedNodeId,
 }: CopilotPanelProps) {
   const navigate = useNavigate();
-  const { networkState, topology, failureAlert, incidents, recoverNetwork, refreshNetwork } =
+  const { failureAlert, recoverNetwork, refreshNetwork } =
     useNetwork();
 
   const [messages, setMessages] = useState<MessageItem[]>([
@@ -60,17 +60,7 @@ export default function CopilotPanel({
     setLoading(true);
 
     try {
-      const selectedNode = topology?.nodes.find((n) => n.id === selectedNodeId) || null;
-      const selectedDevice = networkState?.devices.find((d) => d.id === selectedNodeId) || null;
-
-      const response = await askCopilot({
-        message: text,
-        networkState,
-        selectedNode,
-        selectedDevice,
-        failureAlert,
-        incidents,
-      });
+      const response = await askCopilot(text, failureAlert);
 
       const aiMsg: MessageItem = {
         id: `ai-${Date.now()}`,
@@ -83,6 +73,13 @@ export default function CopilotPanel({
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
       console.error(err);
+      const aiMsg: MessageItem = {
+        id: `ai-${Date.now()}`,
+        sender: "ai",
+        text: "NetPilot AI is temporarily unavailable. Check the backend connection and try again.",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+      setMessages((prev) => [...prev, aiMsg]);
     } finally {
       setLoading(false);
     }
@@ -120,7 +117,7 @@ export default function CopilotPanel({
         <div className="copilot-panel-header">
           <div className="copilot-title-box">
             <div className="copilot-avatar">
-              <Bot size={20} className="text-cyan-400" />
+              <Bot size={20} style={{ color: "var(--accent)" }} />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -151,7 +148,7 @@ export default function CopilotPanel({
             exit={{ opacity: 0, y: -10 }}
             className="context-updated-bar"
           >
-            <RefreshCw size={12} className="animate-spin text-cyan-400" />
+            <RefreshCw size={12} style={{ color: "var(--accent)" }} className="animate-spin" />
             <span>CONTEXT UPDATED WITH LATEST TELEMETRY</span>
           </motion.div>
         )}
@@ -168,7 +165,7 @@ export default function CopilotPanel({
 
           {loading && (
             <div className="copilot-typing-indicator">
-              <Bot size={16} className="text-cyan-400 animate-pulse" />
+              <Bot size={16} style={{ color: "var(--accent)" }} className="animate-pulse" />
               <span>Analyzing network context...</span>
             </div>
           )}

@@ -28,6 +28,10 @@ export default function NetworkTopology({
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [expandedEdgeId, setExpandedEdgeId] = useState<string | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<{
+    node: RenderNode;
+    pos: { x: number; y: number };
+  } | null>(null);
 
   const [dimensions, setDimensions] = useState({ width: 1000, height: 650 });
 
@@ -119,6 +123,13 @@ export default function NetworkTopology({
             setExpandedEdgeId((prev) => (prev === node.id ? null : node.id));
           }
         },
+        onNodeHover: (node, pos) => {
+          if (node && pos) {
+            setHoveredNode({ node, pos });
+          } else {
+            setHoveredNode(null);
+          }
+        },
       }
     );
 
@@ -181,12 +192,50 @@ export default function NetworkTopology({
         }}
       >
         <defs>
-          <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
+          <filter id="glow-amber" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="2" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
         </defs>
       </svg>
+
+      {/* Spatial Hover Preview Card */}
+      {hoveredNode && (
+        <div
+          className="hover-preview-tooltip"
+          style={{
+            position: "fixed",
+            left: hoveredNode.pos.x + 16,
+            top: hoveredNode.pos.y - 40,
+            zIndex: 100,
+            pointerEvents: "none",
+          }}
+        >
+          <div className="hover-preview-card">
+            <div className="hover-header">
+              <span className="hover-node-id">{hoveredNode.node.id}</span>
+              <span className={`hover-status-tag ${hoveredNode.node.status}`}>
+                {hoveredNode.node.status.toUpperCase()}
+              </span>
+            </div>
+            <strong className="hover-node-name">{hoveredNode.node.name}</strong>
+            <div className="hover-grid">
+              <div className="hover-grid-cell">
+                <span>SYSTEMS</span>
+                <strong>{hoveredNode.node.connectedSystems ?? (hoveredNode.node.isEndpoint ? 1 : 22)}</strong>
+              </div>
+              <div className="hover-grid-cell">
+                <span>PACKET LOSS</span>
+                <strong>{hoveredNode.node.status === "down" ? "100%" : "0%"}</strong>
+              </div>
+              <div className="hover-grid-cell">
+                <span>LATENCY</span>
+                <strong>{hoveredNode.node.status === "down" ? "N/A" : "12 ms"}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Viewport Control Bar */}
       <TopologyControls

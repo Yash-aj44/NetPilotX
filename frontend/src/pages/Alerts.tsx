@@ -3,50 +3,18 @@ import { Bell, ShieldAlert, AlertTriangle, CheckCircle } from "lucide-react";
 import { useNetwork } from "../context/NetworkContext";
 import StatusBadge from "../components/ui/StatusBadge";
 import AnimatedNumber from "../components/ui/AnimatedNumber";
+import TextReveal from "../components/ui/TextReveal";
 
 export default function Alerts() {
-  const { failureAlert, incidents } = useNetwork();
-  const [filter, setFilter] = useState<"all" | "critical" | "info">("all");
+  const { alerts } = useNetwork();
+  const [filter, setFilter] = useState<"all" | "critical" | "warning">("all");
 
-  const activeCount = failureAlert ? 1 : 0;
-  const criticalCount = activeCount;
+  const criticalCount = alerts.filter((a) => a.severity === "critical").length;
+  const warningCount = alerts.filter((a) => a.severity === "warning").length;
 
-  const alertItems = [
-    ...(failureAlert
-      ? [
-          {
-            id: "ALT-CRIT-01",
-            severity: "critical",
-            title: `CRITICAL ALERT: ${failureAlert.deviceName} Unreachable`,
-            message: `${failureAlert.affectedSystems} endpoint systems disconnected due to uplink failure.`,
-            time: "Just now",
-            device: failureAlert.deviceName,
-          },
-        ]
-      : []),
-    {
-      id: "ALT-INFO-01",
-      severity: "info",
-      title: "Simulation Stream Active",
-      message: "Monitored telemetry stream active for 200 endpoints.",
-      time: "Session active",
-      device: "NetPilot Engine",
-    },
-    ...incidents
-      .filter((i) => i.status === "resolved")
-      .map((inc) => ({
-        id: `ALT-RES-${inc.id}`,
-        severity: "info",
-        title: `RESOLVED: ${inc.deviceName} Restored`,
-        message: `${inc.affectedSystems} endpoints successfully reconnected.`,
-        time: inc.resolvedAt ? new Date(inc.resolvedAt).toLocaleTimeString() : "Earlier",
-        device: inc.deviceName,
-      })),
-  ];
-
-  const filteredAlerts = alertItems.filter((item) => {
+  const filteredAlerts = alerts.filter((item) => {
     if (filter === "critical") return item.severity === "critical";
-    if (filter === "info") return item.severity === "info";
+    if (filter === "warning") return item.severity === "warning";
     return true;
   });
 
@@ -56,7 +24,7 @@ export default function Alerts() {
       <div className="page-heading">
         <div>
           <p className="page-eyebrow">EVENT MANAGEMENT</p>
-          <h1>Alert Feed</h1>
+          <TextReveal text="Alert Feed" as="h1" />
           <p className="page-description">
             Real-time event log and alert notification management.
           </p>
@@ -72,11 +40,11 @@ export default function Alerts() {
         <div className="kpi-card">
           <div className="kpi-header">
             <span className="kpi-title">TOTAL ALERTS</span>
-            <Bell size={20} className="kpi-icon text-cyan-400" />
+            <Bell size={18} style={{ color: "var(--accent)" }} />
           </div>
           <div className="kpi-body">
             <h2 className="kpi-value">
-              <AnimatedNumber value={alertItems.length} />
+              <AnimatedNumber value={alerts.length} />
             </h2>
             <p className="kpi-subtext">Session alert events</p>
           </div>
@@ -85,7 +53,7 @@ export default function Alerts() {
         <div className="kpi-card">
           <div className="kpi-header">
             <span className="kpi-title">CRITICAL</span>
-            <ShieldAlert size={20} className="kpi-icon text-rose-400" />
+            <ShieldAlert size={18} style={{ color: criticalCount > 0 ? "var(--critical)" : "var(--text-muted)" }} />
           </div>
           <div className="kpi-body">
             <h2 className="kpi-value">
@@ -98,24 +66,26 @@ export default function Alerts() {
         <div className="kpi-card">
           <div className="kpi-header">
             <span className="kpi-title">WARNINGS</span>
-            <AlertTriangle size={20} className="kpi-icon text-amber-400" />
+            <AlertTriangle size={18} style={{ color: warningCount > 0 ? "var(--degraded)" : "var(--text-muted)" }} />
           </div>
           <div className="kpi-body">
-            <h2 className="kpi-value">0</h2>
-            <p className="kpi-subtext">Under investigation</p>
+            <h2 className="kpi-value">
+              <AnimatedNumber value={warningCount} />
+            </h2>
+            <p className="kpi-subtext">Cascaded endpoint warnings</p>
           </div>
         </div>
 
         <div className="kpi-card">
           <div className="kpi-header">
-            <span className="kpi-title">RESOLVED</span>
-            <CheckCircle size={20} className="kpi-icon text-emerald-400" />
+            <span className="kpi-title">OPERATIONAL</span>
+            <CheckCircle size={18} style={{ color: "var(--healthy)" }} />
           </div>
           <div className="kpi-body">
             <h2 className="kpi-value">
-              <AnimatedNumber value={incidents.filter((i) => i.status === "resolved").length} />
+              <AnimatedNumber value={alerts.length === 0 ? 1 : 0} />
             </h2>
-            <p className="kpi-subtext">Handled events</p>
+            <p className="kpi-subtext">Normal operations</p>
           </div>
         </div>
       </div>
@@ -134,7 +104,7 @@ export default function Alerts() {
               className={`filter-btn ${filter === "all" ? "active" : ""}`}
               onClick={() => setFilter("all")}
             >
-              All ({alertItems.length})
+              All ({alerts.length})
             </button>
             <button
               type="button"
@@ -145,17 +115,17 @@ export default function Alerts() {
             </button>
             <button
               type="button"
-              className={`filter-btn ${filter === "info" ? "active" : ""}`}
-              onClick={() => setFilter("info")}
+              className={`filter-btn ${filter === "warning" ? "active" : ""}`}
+              onClick={() => setFilter("warning")}
             >
-              Informational ({alertItems.length - criticalCount})
+              Warnings ({warningCount})
             </button>
           </div>
         </div>
 
         <div className="alert-feed-list">
           {filteredAlerts.length === 0 ? (
-            <div className="empty-alert-state">No alerts in this view category.</div>
+            <div className="empty-alert-state">No active alerts from backend.</div>
           ) : (
             filteredAlerts.map((alert) => (
               <div
@@ -164,9 +134,11 @@ export default function Alerts() {
               >
                 <div className="alert-icon-wrapper">
                   {alert.severity === "critical" ? (
-                    <ShieldAlert size={20} className="text-rose-400" />
+                    <ShieldAlert size={18} style={{ color: "var(--critical)" }} />
+                  ) : alert.severity === "warning" ? (
+                    <AlertTriangle size={18} style={{ color: "var(--degraded)" }} />
                   ) : (
-                    <Bell size={20} className="text-cyan-400" />
+                    <Bell size={18} style={{ color: "var(--accent)" }} />
                   )}
                 </div>
 
@@ -174,7 +146,13 @@ export default function Alerts() {
                   <div className="alert-title-bar">
                     <strong>{alert.title}</strong>
                     <StatusBadge
-                      status={alert.severity === "critical" ? "critical" : "live"}
+                      status={
+                        alert.severity === "critical"
+                          ? "critical"
+                          : alert.severity === "warning"
+                          ? "degraded"
+                          : "live"
+                      }
                       label={alert.severity.toUpperCase()}
                     />
                   </div>
@@ -182,9 +160,9 @@ export default function Alerts() {
                   <p className="alert-msg">{alert.message}</p>
 
                   <div className="alert-meta-bar">
-                    <span className="font-mono text-cyan-400">{alert.id}</span>
+                    <span className="font-mono" style={{ color: "var(--accent)" }}>{alert.id}</span>
                     <span>Device: {alert.device}</span>
-                    <span>{alert.time}</span>
+                    <span>{new Date(alert.timestamp).toLocaleTimeString()}</span>
                   </div>
                 </div>
               </div>

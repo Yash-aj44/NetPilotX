@@ -2,21 +2,34 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 
 import {
+  getAlerts,
+  getIncidents,
+  getMonitoring,
   getNetworkState,
   getNetworkTopology,
+  getTraffic,
+  restoreDevice,
+  simulateDeviceFailure,
+  type BackendAlert,
+  type BackendIncident,
+  type MonitoringDeviceData,
+  type TrafficDeviceData,
 } from "../services/api";
+
+import { wsManager } from "../services/websocket";
 
 import type {
   NetworkState,
   NetworkTopology,
 } from "../types/network";
 
-interface FailureAlert {
+export interface FailureAlert {
   deviceId: string;
   deviceName: string;
   affectedSystems: number;
@@ -30,6 +43,10 @@ export interface IncidentRecord {
   status: "active" | "resolved";
   detectedAt: string;
   resolvedAt?: string;
+  title?: string;
+  severity?: string;
+  rootCause?: string;
+  affectedSystemsList?: string[];
 }
 
 interface NetworkContextValue {
@@ -40,459 +57,244 @@ interface NetworkContextValue {
   failureAlertVisible: boolean;
 
   incidents: IncidentRecord[];
+  alerts: BackendAlert[];
+  monitoring: MonitoringDeviceData[];
+  traffic: TrafficDeviceData[];
 
   loading: boolean;
+  error: string | null;
 
   refreshNetwork: () => Promise<void>;
-
-  failDevice: (deviceId: string) => void;
-
-  recoverNetwork: () => void;
-
+  failDevice: (deviceId: string) => Promise<void>;
+  recoverNetwork: () => Promise<void>;
   dismissFailureAlert: () => void;
 }
 
 const NetworkContext =
-  createContext<NetworkContextValue | undefined>(
-    undefined
-  );
+  createContext<NetworkContextValue | undefined>(undefined);
 
 interface NetworkProviderProps {
   children: ReactNode;
 }
 
-export function NetworkProvider({
-  children,
-}: NetworkProviderProps) {
-  const [topology, setTopology] =
-    useState<NetworkTopology | null>(null);
+export function NetworkProvider({ children }: NetworkProviderProps) {
+  const [topology, setTopology] = useState<NetworkTopology | null>(null);
+  const [networkState, setNetworkState] = useState<NetworkState | null>(null);
+  const [failureAlert, setFailureAlert] = useState<FailureAlert | null>(null);
+  const [failureAlertVisible, setFailureAlertVisible] = useState(false);
+  const [incidents, setIncidents] = useState<IncidentRecord[]>([]);
+  const [alerts, setAlerts] = useState<BackendAlert[]>([]);
+  const [monitoring, setMonitoring] = useState<MonitoringDeviceData[]>([]);
+  const [traffic, setTraffic] = useState<TrafficDeviceData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [networkState, setNetworkState] =
-    useState<NetworkState | null>(null);
-
-  /*
-   * Represents the actual active network failure.
-   *
-   * This remains active even when the notification
-   * itself is dismissed.
-   */
-  const [failureAlert, setFailureAlert] =
-    useState<FailureAlert | null>(null);
+  // Request Sequence Counter to eliminate race conditions (latest-request-wins)
+  const requestIdRef = useRef(0);
+  const debouncedTimerRef = useRef<number | null>(null);
 
   /*
-   * Controls only the visibility of the
-   * failure notification.
-   */
-  const [
-    failureAlertVisible,
-    setFailureAlertVisible,
-  ] = useState(false);
-
-  /*
-   * Stores all incidents created during
-   * the current application session.
-   */
-  const [incidents, setIncidents] =
-    useState<IncidentRecord[]>([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  /*
-   * Load the initial simulated network.
+   * Refresh all network state from FastAPI backend (Single Source of Truth)
    */
   const refreshNetwork = async () => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
 
     try {
-      const [
-        topologyData,
-        stateData,
-      ] = await Promise.all([
+      // 1. Core topology and state fetch
+      const [topologyData, stateData] = await Promise.all([
         getNetworkTopology(),
         getNetworkState(),
       ]);
 
+      // Check for stale response
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
       setTopology(topologyData);
       setNetworkState(stateData);
+      setError(null);
 
-      /*
-       * The mock API represents a healthy
-       * initial network.
-       *
-       * Only clear the active failure when
-       * the loaded topology has no failed node.
-       */
-      const hasExistingFailure =
-        topologyData.nodes.some(
-          (node) => node.status === "down"
-        );
+      // 2. Auxiliary telemetry endpoints using Promise.allSettled
+      const [alertsRes, incidentsRes, monitoringRes, trafficRes] = await Promise.allSettled([
+        getAlerts(),
+        getIncidents(),
+        getMonitoring(),
+        getTraffic(),
+      ]);
 
-      if (!hasExistingFailure) {
+      // Verify sequence ID again after async operations
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
+      if (alertsRes.status === "fulfilled") {
+        setAlerts(alertsRes.value || []);
+      }
+
+      if (incidentsRes.status === "fulfilled" && Array.isArray(incidentsRes.value)) {
+        const mappedIncidents: IncidentRecord[] = incidentsRes.value.map((bi: BackendIncident) => {
+          const rootDevice =
+            bi.root_cause || (bi.id ? bi.id.replace("INC-", "").toLowerCase() : "edge-05");
+          const deviceName = rootDevice.toUpperCase();
+
+          return {
+            id: bi.id,
+            deviceId: rootDevice,
+            deviceName,
+            affectedSystems:
+              bi.affected_count || (bi.affected_systems ? bi.affected_systems.length : 0),
+            status: bi.status === "open" || bi.status === "active" ? "active" : "resolved",
+            detectedAt: bi.created_at || new Date().toISOString(),
+            title: bi.title,
+            severity: bi.severity,
+            rootCause: bi.root_cause,
+            affectedSystemsList: bi.affected_systems,
+          };
+        });
+        setIncidents(mappedIncidents);
+      }
+
+      if (monitoringRes.status === "fulfilled") {
+        setMonitoring(monitoringRes.value || []);
+      }
+
+      if (trafficRes.status === "fulfilled") {
+        setTraffic(trafficRes.value || []);
+      }
+
+      // Reconstruct failure alert state if backend has down devices
+      const downDevices = Array.isArray(topologyData.nodes)
+        ? topologyData.nodes.filter((n) => n.status === "down")
+        : [];
+
+      if (downDevices.length > 0) {
+        const failedNode = downDevices[0];
+        const affectedSystems = stateData.offlineSystems || failedNode.connectedSystems || 22;
+
+        setFailureAlert({
+          deviceId: failedNode.id,
+          deviceName: failedNode.name || failedNode.id.toUpperCase(),
+          affectedSystems,
+        });
+        setFailureAlertVisible(true);
+      } else {
         setFailureAlert(null);
         setFailureAlertVisible(false);
       }
-    } catch (error) {
-      console.error(
-        "Failed to load network:",
-        error
-      );
+    } catch (err: any) {
+      if (requestId === requestIdRef.current) {
+        console.error("Failed to load backend network state:", err);
+        setError(err?.message || "Failed to communicate with NetPilot X backend API.");
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   };
 
   /*
-   * Load the simulated network once.
-   *
-   * NetworkProvider is above the router,
-   * so navigating between pages does not
-   * destroy the network state.
+   * Initialize state & connect WebSocket stream with debounced event handler
    */
   useEffect(() => {
     refreshNetwork();
+
+    wsManager.connect();
+
+    const triggerDebouncedRefresh = () => {
+      if (debouncedTimerRef.current) {
+        clearTimeout(debouncedTimerRef.current);
+      }
+      debouncedTimerRef.current = window.setTimeout(() => {
+        debouncedTimerRef.current = null;
+        refreshNetwork();
+      }, 150);
+    };
+
+    const unsubscribe = wsManager.subscribe(() => {
+      triggerDebouncedRefresh();
+    });
+
+    return () => {
+      if (debouncedTimerRef.current) {
+        clearTimeout(debouncedTimerRef.current);
+      }
+      unsubscribe();
+    };
   }, []);
 
   /*
-   * Inject a simulated device failure.
+   * Inject a device failure via FastAPI backend
    */
-  const failDevice = (deviceId: string) => {
-    if (!topology || !networkState) {
-      return;
-    }
-
-    /*
-     * Only one active failure is allowed
-     * at a time in the current simulation.
-     */
+  const failDevice = async (deviceId: string) => {
     if (failureAlert) {
       return;
     }
 
-    const failedNode =
-      topology.nodes.find(
-        (node) => node.id === deviceId
-      );
-
-    if (!failedNode) {
-      return;
+    try {
+      await simulateDeviceFailure(deviceId);
+      await refreshNetwork();
+    } catch (err: any) {
+      console.error("Failed to simulate device failure:", err);
     }
-
-    /*
-     * Prevent failing an already-down device.
-     */
-    if (failedNode.status === "down") {
-      return;
-    }
-
-    const affectedSystems =
-      failedNode.connectedSystems ?? 0;
-
-    /*
-     * Update failed node.
-     */
-    const updatedNodes =
-      topology.nodes.map((node) =>
-        node.id === deviceId
-          ? {
-              ...node,
-              status: "down" as const,
-            }
-          : node
-      );
-
-    /*
-     * Update all links connected to
-     * the failed device.
-     */
-    const updatedEdges =
-      topology.edges.map((edge) =>
-        edge.source === deviceId ||
-        edge.target === deviceId
-          ? {
-              ...edge,
-              status: "down" as const,
-              packetLoss: 100,
-              latency: 0,
-            }
-          : edge
-      );
-
-    /*
-     * Update device telemetry.
-     */
-    const updatedDevices =
-      networkState.devices.map(
-        (device) =>
-          device.id === deviceId
-            ? {
-                ...device,
-                status: "down" as const,
-                packetLoss: 100,
-                latency: 0,
-              }
-            : device
-      );
-
-    /*
-     * Calculate new network totals.
-     */
-    const newActiveSystems =
-      Math.max(
-        0,
-        networkState.activeSystems -
-          affectedSystems
-      );
-
-    const newOfflineSystems =
-      networkState.offlineSystems +
-      affectedSystems;
-
-    const newNetworkHealth =
-      networkState.totalSystems > 0
-        ? Math.round(
-            (newActiveSystems /
-              networkState.totalSystems) *
-              100
-          )
-        : 0;
-
-    /*
-     * Build updated topology.
-     */
-    const updatedTopology: NetworkTopology = {
-      ...topology,
-      nodes: updatedNodes,
-      edges: updatedEdges,
-    };
-
-    setTopology(updatedTopology);
-
-    /*
-     * Build updated network state.
-     */
-    const updatedNetworkState: NetworkState = {
-      ...networkState,
-      devices: updatedDevices,
-      activeSystems: newActiveSystems,
-      offlineSystems: newOfflineSystems,
-      networkHealth: newNetworkHealth,
-      topology: updatedTopology,
-    };
-
-    setNetworkState(updatedNetworkState);
-
-    /*
-     * Create active failure.
-     */
-    const newFailureAlert: FailureAlert = {
-      deviceId,
-      deviceName: failedNode.name,
-      affectedSystems,
-    };
-
-    setFailureAlert(newFailureAlert);
-
-    /*
-     * Create incident history record.
-     */
-    const newIncident: IncidentRecord = {
-      id: `INC-${Date.now()}`,
-      deviceId,
-      deviceName: failedNode.name,
-      affectedSystems,
-      status: "active",
-      detectedAt:
-        new Date().toISOString(),
-    };
-
-    setIncidents(
-      (currentIncidents) => [
-        newIncident,
-        ...currentIncidents,
-      ]
-    );
-
-    /*
-     * Display the notification.
-     */
-    setFailureAlertVisible(true);
   };
 
   /*
-   * Dismiss only the notification.
-   *
-   * The failure and incident remain active.
+   * Dismiss notification popup only
    */
   const dismissFailureAlert = () => {
     setFailureAlertVisible(false);
   };
 
   /*
-   * Recover the currently failed device.
+   * Recover failed network device via FastAPI backend
    */
-  const recoverNetwork = () => {
-    if (
-      !topology ||
-      !networkState ||
-      !failureAlert
-    ) {
+  const recoverNetwork = async () => {
+    if (!failureAlert) {
       return;
     }
 
-    const failedDeviceId =
-      failureAlert.deviceId;
+    const failedDeviceId = failureAlert.deviceId;
 
-    /*
-     * Restore failed topology node.
-     */
-    const recoveredNodes =
-      topology.nodes.map((node) =>
-        node.id === failedDeviceId
-          ? {
-              ...node,
-              status: "up" as const,
-            }
-          : node
-      );
-
-    /*
-     * Restore links connected to
-     * the recovered device.
-     */
-    const recoveredEdges =
-      topology.edges.map((edge) =>
-        edge.source === failedDeviceId ||
-        edge.target === failedDeviceId
-          ? {
-              ...edge,
-              status: "up" as const,
-              packetLoss: 0,
-            }
-          : edge
-      );
-
-    /*
-     * Restore device telemetry.
-     */
-    const recoveredDevices =
-      networkState.devices.map(
-        (device) =>
-          device.id === failedDeviceId
-            ? {
-                ...device,
-                status: "up" as const,
-                packetLoss: 0,
-                latency:
-                  device.latency &&
-                  device.latency > 0
-                    ? device.latency
-                    : 2,
-              }
-            : device
-      );
-
-    /*
-     * Build recovered topology.
-     */
-    const recoveredTopology: NetworkTopology = {
-      ...topology,
-      nodes: recoveredNodes,
-      edges: recoveredEdges,
-    };
-
-    setTopology(recoveredTopology);
-
-    /*
-     * Build recovered network state.
-     */
-    const recoveredNetworkState: NetworkState = {
-      ...networkState,
-      devices: recoveredDevices,
-      activeSystems:
-        networkState.totalSystems,
-      offlineSystems: 0,
-      networkHealth: 100,
-      topology: recoveredTopology,
-    };
-
-    setNetworkState(recoveredNetworkState);
-
-    /*
-     * Mark the corresponding active incident
-     * as resolved.
-     */
-    setIncidents(
-      (currentIncidents) =>
-        currentIncidents.map(
-          (incident) =>
-            incident.status === "active" &&
-            incident.deviceId ===
-              failedDeviceId
-              ? {
-                  ...incident,
-                  status: "resolved",
-                  resolvedAt:
-                    new Date().toISOString(),
-                }
-              : incident
-        )
-    );
-
-    /*
-     * Remove the active failure.
-     */
-    setFailureAlert(null);
-
-    /*
-     * Hide the notification.
-     */
-    setFailureAlertVisible(false);
+    try {
+      await restoreDevice(failedDeviceId);
+      await refreshNetwork();
+    } catch (err: any) {
+      console.error("Failed to restore device:", error);
+    }
   };
 
-  /*
-   * Context value.
-   */
   const contextValue: NetworkContextValue = {
     topology,
     networkState,
-
     failureAlert,
     failureAlertVisible,
-
     incidents,
-
+    alerts,
+    monitoring,
+    traffic,
     loading,
-
+    error,
     refreshNetwork,
-
     failDevice,
-
     recoverNetwork,
-
     dismissFailureAlert,
   };
 
   return (
-    <NetworkContext.Provider
-      value={contextValue}
-    >
+    <NetworkContext.Provider value={contextValue}>
       {children}
     </NetworkContext.Provider>
   );
 }
 
-/*
- * Custom hook.
- */
 export function useNetwork() {
-  const context =
-    useContext(NetworkContext);
+  const context = useContext(NetworkContext);
 
   if (!context) {
-    throw new Error(
-      "useNetwork must be used inside NetworkProvider"
-    );
+    throw new Error("useNetwork must be used inside NetworkProvider");
   }
 
   return context;

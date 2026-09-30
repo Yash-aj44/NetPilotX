@@ -2,6 +2,7 @@ import { AlertOctagon, CheckCircle, Clock3, Search } from "lucide-react";
 import { useNetwork } from "../context/NetworkContext";
 import StatusBadge from "../components/ui/StatusBadge";
 import AnimatedNumber from "../components/ui/AnimatedNumber";
+import TextReveal from "../components/ui/TextReveal";
 
 export default function Incidents() {
   const { failureAlert, topology, incidents, recoverNetwork } = useNetwork();
@@ -24,7 +25,7 @@ export default function Incidents() {
       <div className="page-heading">
         <div>
           <p className="page-eyebrow">INCIDENT MANAGEMENT</p>
-          <h1>Incident Command Center</h1>
+          <TextReveal text="Incident Command Center" as="h1" />
           <p className="page-description">
             Investigate active network failures, dependency chains, and resolution logs.
           </p>
@@ -40,7 +41,7 @@ export default function Incidents() {
         <div className="kpi-card">
           <div className="kpi-header">
             <span className="kpi-title">OPEN INCIDENTS</span>
-            <AlertOctagon size={20} className="kpi-icon text-rose-400" />
+            <AlertOctagon size={18} style={{ color: activeIncidents.length > 0 ? "var(--critical)" : "var(--text-muted)" }} />
           </div>
           <div className="kpi-body">
             <h2 className="kpi-value">
@@ -53,7 +54,7 @@ export default function Incidents() {
         <div className="kpi-card">
           <div className="kpi-header">
             <span className="kpi-title">INVESTIGATING</span>
-            <Search size={20} className="kpi-icon text-amber-400" />
+            <Search size={18} style={{ color: activeIncidents.length > 0 ? "var(--degraded)" : "var(--text-muted)" }} />
           </div>
           <div className="kpi-body">
             <h2 className="kpi-value">
@@ -66,7 +67,7 @@ export default function Incidents() {
         <div className="kpi-card">
           <div className="kpi-header">
             <span className="kpi-title">CRITICAL SEVERITY</span>
-            <AlertOctagon size={20} className="kpi-icon text-rose-400" />
+            <AlertOctagon size={18} style={{ color: activeIncidents.length > 0 ? "var(--critical)" : "var(--text-muted)" }} />
           </div>
           <div className="kpi-body">
             <h2 className="kpi-value">
@@ -79,7 +80,7 @@ export default function Incidents() {
         <div className="kpi-card">
           <div className="kpi-header">
             <span className="kpi-title">RESOLVED INCIDENTS</span>
-            <CheckCircle size={20} className="kpi-icon text-emerald-400" />
+            <CheckCircle size={18} style={{ color: "var(--healthy)" }} />
           </div>
           <div className="kpi-body">
             <h2 className="kpi-value">
@@ -133,7 +134,7 @@ export default function Incidents() {
                 <span className="block-title">DEPENDENCY CHAIN</span>
                 <div className="dependency-chain">
                   <span className="node-chip healthy">{parentDevice}</span>
-                  <span className="arrow text-rose-400">⚡ LINK DOWN</span>
+                  <span className="arrow" style={{ color: "var(--critical)" }}>⚡ LINK DOWN</span>
                   <span className="node-chip failed">{activeIncident.deviceName}</span>
                   <span className="arrow">→</span>
                   <span className="node-chip affected">
@@ -155,7 +156,7 @@ export default function Incidents() {
           </div>
         ) : (
           <div className="empty-incident-state">
-            <CheckCircle size={32} className="text-emerald-400" />
+            <CheckCircle size={32} style={{ color: "var(--healthy)" }} />
             <h3>No Active Network Incidents</h3>
             <p>All monitored infrastructure systems are operating normally.</p>
           </div>
@@ -189,7 +190,7 @@ export default function Incidents() {
             </div>
             {resolvedIncidents.map((inc) => (
               <div className="table-data-row" key={inc.id}>
-                <span className="font-mono text-cyan-400">{inc.id}</span>
+                <span className="font-mono" style={{ color: "var(--accent)" }}>{inc.id}</span>
                 <strong>{inc.deviceName}</strong>
                 <span>{inc.affectedSystems} Systems</span>
                 <span className="text-muted">{new Date(inc.detectedAt).toLocaleTimeString()}</span>
